@@ -58,14 +58,15 @@ fi
 
 function to_dashes() {
     local num=$1
-    local UPPER_LIMIT=${2:-2500}  # Default to 50000 if second parameter not provided
+    local UPPER_LIMIT=${2:-25000}  # Default to 50000 if second parameter not provided
     local dashes=""
     local count=0
 
     # Ensure input is within valid range
     if [[ ! $num =~ ^[0-9]+$ ]] || [ "$num" -lt 0 ] || [ "$num" -gt "$UPPER_LIMIT" ]; then
         echo "Error: Input must be a number between 0 and $UPPER_LIMIT" >&2
-        return 1
+        # return 1
+        num=$UPPER_LIMIT
     fi
 
     # Calculate number of dashes (each dash represents ~UPPER_LIMIT/9)
