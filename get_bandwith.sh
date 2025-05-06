@@ -111,4 +111,4 @@ formatted_tx=$(format_bandwidth "$avg_tx")
 # - Output the "dashed" current RX and TX.
 dashed_rx="$(to_dashes $avg_rx)"
 dashed_tx="$(to_dashes $avg_tx)"
-echo -e "$(($current_rx / 1024 / 1024))MB" RX:"$dashed_rx" TX:"$dashed_tx"
+echo -e "$(($current_rx / 1024 / 1024))MB" $formatted_rx RX:"$dashed_rx" TX:"$dashed_tx"
