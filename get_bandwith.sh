@@ -56,6 +56,37 @@ else
     avg_tx=$(( delta_tx / delta_t ))
 fi
 
+function to_dashes() {
+    local num=$1
+    local UPPER_LIMIT=${2:-2500}  # Default to 50000 if second parameter not provided
+    local dashes=""
+    local count=0
+
+    # Ensure input is within valid range
+    if [[ ! $num =~ ^[0-9]+$ ]] || [ "$num" -lt 0 ] || [ "$num" -gt "$UPPER_LIMIT" ]; then
+        echo "Error: Input must be a number between 0 and $UPPER_LIMIT" >&2
+        return 1
+    fi
+
+    # Calculate number of dashes (each dash represents ~UPPER_LIMIT/9)
+    count=$(( (num * 9 + UPPER_LIMIT/2) / UPPER_LIMIT ))
+    # Count of 9-slashes
+    acount=$(( 9 - count ))
+
+    # Create string of dashes
+    while [ $count -gt 0 ]; do
+        dashes="${dashes}#"
+        count=$((count - 1))
+    done
+
+    while [ $acount -gt 0 ]; do
+        dashes="${dashes}_"
+        acount=$((acount - 1))
+    done
+
+    echo "$dashes"
+}
+
 # Function to format the bandwidth into higher units when applicable.
 format_bandwidth() {
     python3 -c "import sys
@@ -74,5 +105,10 @@ else:
 formatted_rx=$(format_bandwidth "$avg_rx")
 formatted_tx=$(format_bandwidth "$avg_tx")
 
-# Output the current RX (in MB) along with the computed bandwidth for RX and TX.
-echo -e "$(($current_rx / 1024 / 1024))MB RX: $formatted_rx\tTX: $formatted_tx"
+# - Output the current RX and TX.
+# echo -e "$(($current_rx / 1024 / 1024))MB RX: $formatted_rx\tTX: $formatted_tx"
+
+# - Output the "dashed" current RX and TX.
+dashed_rx="$(to_dashes $avg_rx)"
+dashed_tx="$(to_dashes $avg_tx)"
+echo -e "$(($current_rx / 1024 / 1024))MB" RX:"$dashed_rx" TX:"$dashed_tx"
