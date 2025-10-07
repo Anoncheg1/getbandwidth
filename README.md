@@ -1,5 +1,10 @@
 #
 Bash script to get average bandwidth of interface for recent 10 seconds. No dependencies.
+
+Output:
+
+`1225MB 15.70 KB/s RX:########_______ TX:##_____________`
+
 # Usage
 
 ```bash

@@ -2,33 +2,34 @@
 
 # Allow two parameters: interface name and interval (in seconds).
 # Defaults: interface "wlan0", interval 20 seconds.
-intf="${1:-wlan0}"
-interval="${2:-20}"
-data_file="/tmp/bw_data_${intf}"
+INTF="${1:-wlan0}"
+INTERVAL="${2:-20}"
+DATA_FILE="/tmp/bw_data_${INTF}"
+UPPER_LIMIT=${2:-25000}  # Default to 50000 if second parameter not provided
 
 # Get the current timestamp and RX/TX values for the interface.
 current_ts=$(date +%s)
-current_rx=$(grep "$intf" /proc/net/dev | tr -s ' ' | cut -d ' ' -f3)
-current_tx=$(grep "$intf" /proc/net/dev | tr -s ' ' | cut -d ' ' -f11)
+current_rx=$(grep "$INTF" /proc/net/dev | tr -s ' ' | cut -d ' ' -f3)
+current_tx=$(grep "$INTF" /proc/net/dev | tr -s ' ' | cut -d ' ' -f11)
 
 # Append the current measurement (timestamp, RX, TX) to the persistent file.
-echo "$current_ts $current_rx $current_tx" >> "$data_file"
+echo "$current_ts $current_rx $current_tx" >> "$DATA_FILE"
 
 # Prune any entries older than 20 seconds to keep the data file small.
-awk -v ts="$current_ts" '$1 >= ts - 20' "$data_file" > "${data_file}.tmp" && mv -f "${data_file}.tmp" "$data_file"
+awk -v ts="$current_ts" '$1 >= ts - 20' "$DATA_FILE" > "${DATA_FILE}.tmp" && mv -f "${DATA_FILE}.tmp" "$DATA_FILE"
 
 # Determine the target timestamp from [interval] seconds ago.
-target_ts=$(( current_ts - interval ))
+target_ts=$(( current_ts - INTERVAL ))
 
 # Find the most recent record whose timestamp is <= target_ts.
-prev_line=$(awk -v target="$target_ts" '($1 <= target){line=$0} END{if(line) print line}' "$data_file")
+prev_line=$(awk -v target="$target_ts" '($1 <= target){line=$0} END{if(line) print line}' "$DATA_FILE")
 
 # If a record with an appropriate timestamp isn't found…
 if [ -z "$prev_line" ]; then
-    if [ -s "$data_file" ]; then
+    if [ -s "$DATA_FILE" ]; then
         # Data exists in the file, so fall back to the oldest available record.
-        prev_line=$(head -n 1 "$data_file")
-        echo "Not enough historical data for a full $interval seconds interval. Using oldest available record." >&2
+        prev_line=$(head -n 1 "$DATA_FILE")
+        echo "Not enough historical data for a full $INTERVAL seconds interval. Using oldest available record." >&2
     else
         # No record exists at all; use current values so that bandwidth reads 0.
         prev_line="$current_ts $current_rx $current_tx"
@@ -57,35 +58,36 @@ else
 fi
 
 function to_dashes() {
-    local num=$1
-    local UPPER_LIMIT=${2:-25000}  # Default to 50000 if second parameter not provided
-    local dashes=""
-    local count=0
+  # uses $1, $UPPER_LIMIT
+  local num=$1
 
-    # Ensure input is within valid range
-    if [[ ! $num =~ ^[0-9]+$ ]] || [ "$num" -lt 0 ] || [ "$num" -gt "$UPPER_LIMIT" ]; then
-        echo "Error: Input must be a number between 0 and $UPPER_LIMIT" >&2
-        # return 1
-        num=$UPPER_LIMIT
-    fi
+  local dashes=""
+  local count=0
 
-    # Calculate number of dashes (each dash represents ~UPPER_LIMIT/9)
-    count=$(( (num * 9 + UPPER_LIMIT/2) / UPPER_LIMIT ))
-    # Count of 9-slashes
-    acount=$(( 9 - count ))
+  # Ensure input is within valid range
+  if [[ ! $num =~ ^[0-9]+$ ]] || [ "$num" -lt 0 ] || [ "$num" -gt "$UPPER_LIMIT" ]; then
+    echo "Error: Input must be a number between 0 and $UPPER_LIMIT" >&2
+    # return 1
+    num=$UPPER_LIMIT
+  fi
 
-    # Create string of dashes
-    while [ $count -gt 0 ]; do
-        dashes="${dashes}#"
-        count=$((count - 1))
-    done
+  # Calculate number of dashes (each dash represents ~UPPER_LIMIT/9)
+  count=$(( (num * 15 + UPPER_LIMIT/2) / UPPER_LIMIT ))
+  # Count of 9-slashes
+  acount=$(( 15 - count ))
 
-    while [ $acount -gt 0 ]; do
-        dashes="${dashes}_"
-        acount=$((acount - 1))
-    done
+  # Create string of dashes
+  while [ $count -gt 0 ]; do
+    dashes="${dashes}#"
+    count=$((count - 1))
+  done
 
-    echo "$dashes"
+  while [ $acount -gt 0 ]; do
+    dashes="${dashes}_"
+    acount=$((acount - 1))
+  done
+
+  echo "$dashes"
 }
 
 # Function to format the bandwidth into higher units when applicable.
@@ -103,8 +105,11 @@ else:
 " "$1"
 }
 
-formatted_rx=$(format_bandwidth "$avg_rx")
-formatted_tx=$(format_bandwidth "$avg_tx")
+
+# formatted_rx=$(format_bandwidth "$avg_rx")
+# formatted_tx=$(format_bandwidth "$avg_tx")
+avg_rx_tx=$(($avg_rx + $avg_tx))
+formatted_rx_tx=$(format_bandwidth "$avg_rx_tx")
 
 # - Output the current RX and TX.
 # echo -e "$(($current_rx / 1024 / 1024))MB RX: $formatted_rx\tTX: $formatted_tx"
@@ -112,4 +117,5 @@ formatted_tx=$(format_bandwidth "$avg_tx")
 # - Output the "dashed" current RX and TX.
 dashed_rx="$(to_dashes $avg_rx)"
 dashed_tx="$(to_dashes $avg_tx)"
-echo -e "$(($current_rx / 1024 / 1024))MB" $formatted_rx RX:"$dashed_rx" TX:"$dashed_tx"
+current_rx_tx=$((current_rx + current_tx))
+echo -e "$(($current_rx_tx / 1024 / 1024))MB" $formatted_rx_tx RX:"$dashed_rx" TX:"$dashed_tx"
