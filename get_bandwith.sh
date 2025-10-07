@@ -1,11 +1,17 @@
 #!/bin/bash
 
+# usage:
+# $ source get_bandwith.sh [interface] [interval] [max_bandwith]
+# Examplea
+# $ source get_bandwith.sh wlan0 15 300
+
 # Allow two parameters: interface name and interval (in seconds).
 # Defaults: interface "wlan0", interval 20 seconds.
 INTF="${1:-wlan0}"
 INTERVAL="${2:-20}"
+# echo $INTERVAL
 DATA_FILE="/tmp/bw_data_${INTF}"
-UPPER_LIMIT=${2:-25000}  # Default to 50000 if second parameter not provided
+UPPER_LIMIT="${3:-25000}"  # Default to 50000 if second parameter not provided
 
 # Get the current timestamp and RX/TX values for the interface.
 current_ts=$(date +%s)
@@ -16,13 +22,19 @@ current_tx=$(grep "$INTF" /proc/net/dev | tr -s ' ' | cut -d ' ' -f11)
 echo "$current_ts $current_rx $current_tx" >> "$DATA_FILE"
 
 # Prune any entries older than 20 seconds to keep the data file small.
-awk -v ts="$current_ts" '$1 >= ts - 20' "$DATA_FILE" > "${DATA_FILE}.tmp" && mv -f "${DATA_FILE}.tmp" "$DATA_FILE"
+# awk -v ts="$current_ts" '$1 >= ts - 20' "$DATA_FILE" > "${DATA_FILE}.tmp" && mv -f "${DATA_FILE}.tmp" "$DATA_FILE"
+awk -v ts="$current_ts" -v intvl="$INTERVAL" '$1 >= ts - intvl' "$DATA_FILE" > "${DATA_FILE}.tmp" && mv -f "${DATA_FILE}.tmp" "$DATA_FILE"
 
 # Determine the target timestamp from [interval] seconds ago.
-target_ts=$(( current_ts - INTERVAL ))
+# target_ts=$(( current_ts - INTERVAL ))
 
 # Find the most recent record whose timestamp is <= target_ts.
-prev_line=$(awk -v target="$target_ts" '($1 <= target){line=$0} END{if(line) print line}' "$DATA_FILE")
+# prev_line=$(awk -v target="$target_ts" '($1 <= target){line=$0} END{if(line) print line}' "$DATA_FILE")
+# current_ts=$(dawte +%s)
+# echo $(awk -v target="$(( current_ts - INTERVAL ))" '($1 <= target){line=$0} END{if(line) print line}' "$DATA_FILE")
+# current_ts=$(date +%s) && awk -v target="$(( current_ts - INTERVAL ))" '($1 <= target){line=$0} END{if(line) print line}' "$DATA_FILE"
+# prev_line=$(awk -v target="$(( current_ts - INTERVAL ))" '($1 <= target){line=$0} END{if(line) print line}' "$DATA_FILE")
+prev_line=$(head -n 1 "$DATA_FILE")
 
 # If a record with an appropriate timestamp isn't found…
 if [ -z "$prev_line" ]; then
@@ -65,6 +77,7 @@ function to_dashes() {
   local count=0
 
   # Ensure input is within valid range
+  # echo "wtf" $num "$UPPER_LIMIT"
   if [[ ! $num =~ ^[0-9]+$ ]] || [ "$num" -lt 0 ] || [ "$num" -gt "$UPPER_LIMIT" ]; then
     echo "Error: Input must be a number between 0 and $UPPER_LIMIT" >&2
     # return 1

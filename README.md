@@ -8,7 +8,9 @@ Output:
 # Usage
 
 ```bash
-source  get_bandwith.sh wlan0 15
+# $ source get_bandwith.sh [interface] [interval] [max_bandwith]
+# Example:
+source  get_bandwith.sh wlan0 15 400
 ```
 
 # Require
